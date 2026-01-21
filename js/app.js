@@ -73,6 +73,12 @@ const App = (function() {
             logoutBtn.addEventListener('click', () => Auth.logout());
         }
 
+        // Settings button
+        const settingsBtn = document.getElementById('settings-btn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', openSettings);
+        }
+
         // Search input
         const searchInput = document.getElementById('search-input');
         if (searchInput) {
@@ -90,6 +96,9 @@ const App = (function() {
                 }
             });
         }
+
+        // Settings modal
+        initSettingsModal();
     }
 
     /**
@@ -139,12 +148,16 @@ const App = (function() {
 
             case 'editor':
                 pageTitle.textContent = 'Editor';
+                const githubConfigured = GitHub.isConfigured();
                 headerActions.innerHTML = `
                     <button class="btn btn-secondary" id="btn-new">New</button>
-                    <button class="btn btn-primary" id="btn-export">Export</button>
+                    <button class="btn btn-secondary" id="btn-export">Export</button>
+                    ${githubConfigured ? '<button class="btn btn-primary" id="btn-save-github">Save to GitHub</button>' : '<button class="btn btn-ghost" id="btn-setup-github">Setup GitHub Sync</button>'}
                 `;
                 document.getElementById('btn-new')?.addEventListener('click', () => Editor.newDraft());
                 document.getElementById('btn-export')?.addEventListener('click', () => Editor.exportMarkdown());
+                document.getElementById('btn-save-github')?.addEventListener('click', saveToGitHub);
+                document.getElementById('btn-setup-github')?.addEventListener('click', openSettings);
                 break;
 
             case 'whiteboard':
@@ -351,6 +364,155 @@ const App = (function() {
         }
     }
 
+    /**
+     * Initialize settings modal
+     */
+    function initSettingsModal() {
+        const modal = document.getElementById('settings-modal');
+        const closeBtn = document.getElementById('settings-close');
+        const backdrop = modal?.querySelector('.modal-backdrop');
+        const testBtn = document.getElementById('github-test');
+        const saveBtn = document.getElementById('github-save');
+
+        // Close modal handlers
+        closeBtn?.addEventListener('click', closeSettings);
+        backdrop?.addEventListener('click', closeSettings);
+
+        // Test connection
+        testBtn?.addEventListener('click', async () => {
+            const statusEl = document.getElementById('github-status');
+            const tokenInput = document.getElementById('github-token');
+            const ownerInput = document.getElementById('github-owner');
+            const repoInput = document.getElementById('github-repo');
+
+            // Temporarily save for testing
+            if (tokenInput.value) {
+                GitHub.setToken(tokenInput.value);
+            }
+            if (ownerInput.value && repoInput.value) {
+                GitHub.setRepoConfig(ownerInput.value, repoInput.value);
+            }
+
+            statusEl.className = 'settings-status info';
+            statusEl.textContent = 'Testing connection...';
+
+            const result = await GitHub.testConnection();
+            if (result.success) {
+                statusEl.className = 'settings-status success';
+                statusEl.textContent = 'Connection successful!';
+            } else {
+                statusEl.className = 'settings-status error';
+                statusEl.textContent = 'Connection failed: ' + result.error;
+            }
+        });
+
+        // Save settings
+        saveBtn?.addEventListener('click', () => {
+            const tokenInput = document.getElementById('github-token');
+            const ownerInput = document.getElementById('github-owner');
+            const repoInput = document.getElementById('github-repo');
+            const statusEl = document.getElementById('github-status');
+
+            if (tokenInput.value) {
+                GitHub.setToken(tokenInput.value);
+            }
+            if (ownerInput.value && repoInput.value) {
+                GitHub.setRepoConfig(ownerInput.value, repoInput.value);
+            }
+
+            statusEl.className = 'settings-status success';
+            statusEl.textContent = 'Settings saved!';
+
+            // Refresh header to show GitHub button
+            updateHeader(currentView);
+
+            setTimeout(() => {
+                closeSettings();
+            }, 1000);
+        });
+    }
+
+    /**
+     * Open settings modal
+     */
+    function openSettings() {
+        const modal = document.getElementById('settings-modal');
+        const tokenInput = document.getElementById('github-token');
+        const ownerInput = document.getElementById('github-owner');
+        const repoInput = document.getElementById('github-repo');
+        const statusEl = document.getElementById('github-status');
+
+        // Load current values
+        const config = GitHub.getRepoConfig();
+        const token = GitHub.getToken();
+
+        if (token) {
+            tokenInput.value = token;
+        }
+        ownerInput.value = config.owner || '';
+        repoInput.value = config.repo || '';
+        statusEl.className = 'settings-status';
+        statusEl.textContent = '';
+
+        modal?.classList.remove('hidden');
+    }
+
+    /**
+     * Close settings modal
+     */
+    function closeSettings() {
+        const modal = document.getElementById('settings-modal');
+        modal?.classList.add('hidden');
+    }
+
+    /**
+     * Save current editor content to GitHub
+     */
+    async function saveToGitHub() {
+        const content = Editor.getContent();
+        if (!content.trim()) {
+            alert('Nothing to save');
+            return;
+        }
+
+        const title = Markdown.extractTitle(content);
+        const id = title.toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .substring(0, 50) || 'untitled';
+
+        const saveBtn = document.getElementById('btn-save-github');
+        const originalText = saveBtn?.textContent;
+
+        try {
+            if (saveBtn) {
+                saveBtn.textContent = 'Saving...';
+                saveBtn.disabled = true;
+            }
+
+            await GitHub.saveNotebook(id, content, title, []);
+
+            if (saveBtn) {
+                saveBtn.textContent = 'Saved!';
+                setTimeout(() => {
+                    saveBtn.textContent = originalText;
+                    saveBtn.disabled = false;
+                }, 2000);
+            }
+
+            // Reload notebooks to show the new one
+            await loadNotebooks();
+
+        } catch (err) {
+            console.error('Failed to save:', err);
+            alert('Failed to save: ' + err.message);
+            if (saveBtn) {
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+    }
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -362,6 +524,9 @@ const App = (function() {
     return {
         showView,
         loadNotebook,
-        toggleTheme
+        loadNotebooks,
+        toggleTheme,
+        openSettings,
+        saveToGitHub
     };
 })();
