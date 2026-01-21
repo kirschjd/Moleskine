@@ -6,7 +6,7 @@
 const Auth = (function() {
     // Default password hash (SHA-256 of 'moleskine')
     // Change this to your own password hash
-    const DEFAULT_PASSWORD_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
+    const DEFAULT_PASSWORD_HASH = 'd950113d83977940d0160cdc6f59edd3da64ac03b4f7cd896a27921a45cd8fb4';
 
     const SESSION_KEY = 'moleskine_auth';
     const HASH_KEY = 'moleskine_password_hash';
