@@ -200,15 +200,40 @@ const App = (function() {
      */
     async function loadNotebooks() {
         try {
+            // Try fetching from local path first
             const response = await fetch('notebooks/_index.json');
-            if (!response.ok) throw new Error('Failed to load notebook index');
+            console.log('Notebook index fetch status:', response.status);
+
+            if (!response.ok) {
+                throw new Error(`Failed to load notebook index: ${response.status}`);
+            }
 
             const data = await response.json();
+            console.log('Loaded notebooks:', data);
+
             notebooks = data.notebooks || [];
             renderNotebookList();
             renderTagList(data.tags || []);
         } catch (err) {
-            console.warn('Could not load notebooks:', err);
+            console.error('Could not load notebooks:', err);
+
+            // If GitHub is configured, try fetching from GitHub API
+            if (GitHub.isConfigured()) {
+                try {
+                    console.log('Trying to load from GitHub API...');
+                    const file = await GitHub.getFile('notebooks/_index.json');
+                    if (file) {
+                        const data = JSON.parse(file.content);
+                        notebooks = data.notebooks || [];
+                        renderNotebookList();
+                        renderTagList(data.tags || []);
+                        return;
+                    }
+                } catch (githubErr) {
+                    console.error('GitHub fetch also failed:', githubErr);
+                }
+            }
+
             notebooks = [];
             renderNotebookList();
         }
@@ -274,10 +299,33 @@ const App = (function() {
                 return;
             }
 
-            const response = await fetch(`notebooks/${id}.md`);
-            if (!response.ok) throw new Error('Failed to load notebook');
+            let content = null;
 
-            const content = await response.text();
+            // Try fetching from local path first
+            try {
+                const response = await fetch(`notebooks/${id}.md`);
+                if (response.ok) {
+                    content = await response.text();
+                }
+            } catch (fetchErr) {
+                console.warn('Local fetch failed:', fetchErr);
+            }
+
+            // If local fetch failed and GitHub is configured, try GitHub API
+            if (!content && GitHub.isConfigured()) {
+                try {
+                    const file = await GitHub.getFile(`notebooks/${id}.md`);
+                    if (file) {
+                        content = file.content;
+                    }
+                } catch (githubErr) {
+                    console.warn('GitHub fetch failed:', githubErr);
+                }
+            }
+
+            if (!content) {
+                throw new Error('Failed to load notebook content');
+            }
 
             currentNotebook = { ...notebook, content };
 
