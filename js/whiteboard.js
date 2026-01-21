@@ -204,15 +204,20 @@ const Whiteboard = (function() {
         const pos = getPosition(e);
 
         if (currentTool !== 'pen' && currentTool !== 'eraser') {
-            redrawFromHistory();
-            drawShape(startX, startY, pos.x, pos.y, true);
+            // Restore from history synchronously, then draw final shape
+            redrawFromHistorySync(() => {
+                drawShape(startX, startY, pos.x, pos.y, true);
+                // Reset and save after shape is drawn
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.lineWidth = strokeWidth;
+                saveState();
+            });
+        } else {
+            // Reset composite operation
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.lineWidth = strokeWidth;
+            saveState();
         }
-
-        // Reset composite operation
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.lineWidth = strokeWidth;
-
-        saveState();
     }
 
     /**
@@ -335,7 +340,7 @@ const Whiteboard = (function() {
     }
 
     /**
-     * Redraw canvas from last saved state
+     * Redraw canvas from last saved state (async, for previews)
      */
     function redrawFromHistory() {
         if (historyIndex < 0) return;
@@ -345,6 +350,24 @@ const Whiteboard = (function() {
         img.onload = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.drawImage(img, 0, 0);
+        };
+    }
+
+    /**
+     * Redraw canvas from last saved state with callback (for final draws)
+     */
+    function redrawFromHistorySync(callback) {
+        if (historyIndex < 0) {
+            if (callback) callback();
+            return;
+        }
+
+        const img = new Image();
+        img.src = history[historyIndex];
+        img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0);
+            if (callback) callback();
         };
     }
 
