@@ -10,6 +10,10 @@ const Editor = (function() {
     let autoSaveTimer = null;
     const AUTO_SAVE_DELAY = 1000; // 1 second
 
+    // Track if editing an existing notebook
+    let currentNotebookId = null;
+    let currentNotebookTitle = null;
+
     /**
      * Initialize the editor
      */
@@ -267,10 +271,30 @@ const Editor = (function() {
      */
     function newDraft() {
         currentDraftId = null;
+        currentNotebookId = null;
+        currentNotebookTitle = null;
         if (textarea) {
             textarea.value = '';
             updatePreview();
         }
+    }
+
+    /**
+     * Set current notebook being edited (for edit existing feature)
+     */
+    function setCurrentNotebook(id, title) {
+        currentNotebookId = id;
+        currentNotebookTitle = title;
+    }
+
+    /**
+     * Get current notebook info if editing existing
+     */
+    function getCurrentNotebook() {
+        if (currentNotebookId) {
+            return { id: currentNotebookId, title: currentNotebookTitle };
+        }
+        return null;
     }
 
     /**
@@ -350,6 +374,8 @@ const Editor = (function() {
         getContent,
         setContent,
         exportMarkdown,
-        saveDraft
+        saveDraft,
+        setCurrentNotebook,
+        getCurrentNotebook
     };
 })();

@@ -13,6 +13,7 @@ const Whiteboard = (function() {
     let startX = 0;
     let startY = 0;
     let initialized = false;
+    let shapePreviewImage = null; // Cached image for shape previews
 
     // Store drawing history for undo
     let history = [];
@@ -173,6 +174,10 @@ const Whiteboard = (function() {
                 ctx.strokeStyle = currentColor;
                 ctx.lineWidth = strokeWidth;
             }
+        } else {
+            // For shapes, cache the current canvas for instant preview redraw
+            shapePreviewImage = new Image();
+            shapePreviewImage.src = canvas.toDataURL();
         }
     }
 
@@ -188,9 +193,12 @@ const Whiteboard = (function() {
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
         } else {
-            // Preview shape
-            redrawFromHistory();
-            drawShape(startX, startY, pos.x, pos.y, false);
+            // Preview shape using cached image (instant, no async flicker)
+            if (shapePreviewImage && shapePreviewImage.complete) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(shapePreviewImage, 0, 0);
+                drawShape(startX, startY, pos.x, pos.y, false);
+            }
         }
     }
 
@@ -204,14 +212,16 @@ const Whiteboard = (function() {
         const pos = getPosition(e);
 
         if (currentTool !== 'pen' && currentTool !== 'eraser') {
-            // Restore from history synchronously, then draw final shape
-            redrawFromHistorySync(() => {
+            // Draw final shape using cached image (instant)
+            if (shapePreviewImage && shapePreviewImage.complete) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(shapePreviewImage, 0, 0);
                 drawShape(startX, startY, pos.x, pos.y, true);
-                // Reset and save after shape is drawn
-                ctx.globalCompositeOperation = 'source-over';
-                ctx.lineWidth = strokeWidth;
-                saveState();
-            });
+            }
+            shapePreviewImage = null; // Clear cached image
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.lineWidth = strokeWidth;
+            saveState();
         } else {
             // Reset composite operation
             ctx.globalCompositeOperation = 'source-over';
@@ -462,6 +472,14 @@ const Whiteboard = (function() {
         }
     }
 
+    /**
+     * Get canvas as data URL (for saving)
+     */
+    function getDataURL() {
+        if (!canvas) return null;
+        return canvas.toDataURL('image/png');
+    }
+
     // Public API
     return {
         init,
@@ -472,6 +490,7 @@ const Whiteboard = (function() {
         clear,
         exportPNG,
         exportSVG,
-        copyToClipboard
+        copyToClipboard,
+        getDataURL
     };
 })();

@@ -144,6 +144,12 @@ const App = (function() {
         switch (viewName) {
             case 'reader':
                 pageTitle.textContent = currentNotebook ? currentNotebook.title : 'Welcome';
+                if (currentNotebook) {
+                    headerActions.innerHTML = `
+                        <button class="btn btn-primary" id="btn-edit-notebook">Edit</button>
+                    `;
+                    document.getElementById('btn-edit-notebook')?.addEventListener('click', editCurrentNotebook);
+                }
                 break;
 
             case 'editor':
@@ -162,11 +168,13 @@ const App = (function() {
 
             case 'whiteboard':
                 pageTitle.textContent = 'Whiteboard';
+                const whiteboardGithubConfigured = GitHub.isConfigured();
                 headerActions.innerHTML = `
                     <button class="btn btn-ghost" id="btn-undo">Undo</button>
                     <button class="btn btn-ghost" id="btn-redo">Redo</button>
                     <button class="btn btn-ghost" id="btn-clear">Clear</button>
-                    <button class="btn btn-primary" id="btn-export-png">Export PNG</button>
+                    <button class="btn btn-secondary" id="btn-export-png">Export PNG</button>
+                    ${whiteboardGithubConfigured ? '<button class="btn btn-primary" id="btn-save-whiteboard">Save to GitHub</button>' : ''}
                 `;
                 document.getElementById('btn-undo')?.addEventListener('click', () => Whiteboard.undo());
                 document.getElementById('btn-redo')?.addEventListener('click', () => Whiteboard.redo());
@@ -176,6 +184,7 @@ const App = (function() {
                     }
                 });
                 document.getElementById('btn-export-png')?.addEventListener('click', () => Whiteboard.exportPNG());
+                document.getElementById('btn-save-whiteboard')?.addEventListener('click', saveWhiteboardToGitHub);
                 break;
 
             case 'recent':
@@ -240,7 +249,7 @@ const App = (function() {
     }
 
     /**
-     * Render the notebook list in sidebar
+     * Render the notebook list in sidebar (grouped by folder)
      */
     function renderNotebookList() {
         const list = document.getElementById('notebook-list');
@@ -251,7 +260,67 @@ const App = (function() {
             return;
         }
 
-        list.innerHTML = notebooks.map(nb => `
+        // Group notebooks by folder
+        const folders = {};
+        const unfiled = [];
+
+        notebooks.forEach(nb => {
+            if (nb.folder) {
+                if (!folders[nb.folder]) {
+                    folders[nb.folder] = [];
+                }
+                folders[nb.folder].push(nb);
+            } else {
+                unfiled.push(nb);
+            }
+        });
+
+        let html = '';
+
+        // Render folders first
+        const folderNames = Object.keys(folders).sort();
+        folderNames.forEach(folderName => {
+            const folderNotebooks = folders[folderName];
+            html += `
+                <li class="nav-item nav-folder">
+                    <div class="nav-folder-header" data-folder="${folderName}">
+                        <svg class="folder-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        <span>${folderName}</span>
+                        <svg class="folder-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"/>
+                        </svg>
+                    </div>
+                    <ul class="nav-folder-contents">
+                        ${folderNotebooks.map(nb => renderNotebookItem(nb)).join('')}
+                    </ul>
+                </li>
+            `;
+        });
+
+        // Render unfiled notebooks
+        unfiled.forEach(nb => {
+            html += renderNotebookItem(nb);
+        });
+
+        list.innerHTML = html;
+
+        // Add folder toggle listeners
+        list.querySelectorAll('.nav-folder-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                e.preventDefault();
+                const folder = header.closest('.nav-folder');
+                folder.classList.toggle('collapsed');
+            });
+        });
+    }
+
+    /**
+     * Render a single notebook item
+     */
+    function renderNotebookItem(nb) {
+        return `
             <li class="nav-item">
                 <a href="#" class="nav-link" data-notebook="${nb.id}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -263,7 +332,7 @@ const App = (function() {
                     <span>${nb.title}</span>
                 </a>
             </li>
-        `).join('');
+        `;
     }
 
     /**
@@ -514,6 +583,20 @@ const App = (function() {
     }
 
     /**
+     * Edit the currently viewed notebook
+     */
+    function editCurrentNotebook() {
+        if (!currentNotebook) return;
+
+        // Load content into editor
+        Editor.setContent(currentNotebook.content);
+        Editor.setCurrentNotebook(currentNotebook.id, currentNotebook.title);
+
+        // Switch to editor view
+        showView('editor');
+    }
+
+    /**
      * Save current editor content to GitHub
      */
     async function saveToGitHub() {
@@ -524,10 +607,32 @@ const App = (function() {
         }
 
         const title = Markdown.extractTitle(content);
-        const id = title.toLowerCase()
+
+        // Use existing notebook ID if editing, otherwise generate from title
+        const existingNotebook = Editor.getCurrentNotebook();
+        const id = existingNotebook ? existingNotebook.id : (title.toLowerCase()
             .replace(/[^\w\s-]/g, '')
             .replace(/\s+/g, '-')
-            .substring(0, 50) || 'untitled';
+            .substring(0, 50) || 'untitled');
+
+        // Get existing folder or prompt for one
+        let folder = null;
+        if (existingNotebook) {
+            // Keep existing folder when editing
+            const existing = notebooks.find(n => n.id === existingNotebook.id);
+            folder = existing?.folder || null;
+        } else {
+            // Get available folders
+            const existingFolders = [...new Set(notebooks.map(n => n.folder).filter(Boolean))];
+            const folderOptions = existingFolders.length > 0
+                ? `\n\nExisting folders: ${existingFolders.join(', ')}`
+                : '';
+
+            const folderInput = prompt(`Enter folder name (optional, leave blank for root):${folderOptions}`);
+            if (folderInput !== null) {
+                folder = folderInput.trim() || null;
+            }
+        }
 
         const saveBtn = document.getElementById('btn-save-github');
         const originalText = saveBtn?.textContent;
@@ -538,7 +643,7 @@ const App = (function() {
                 saveBtn.disabled = true;
             }
 
-            await GitHub.saveNotebook(id, content, title, []);
+            await GitHub.saveNotebook(id, content, title, [], folder);
 
             if (saveBtn) {
                 saveBtn.textContent = 'Saved!';
@@ -561,6 +666,65 @@ const App = (function() {
         }
     }
 
+    /**
+     * Save current whiteboard to GitHub
+     */
+    async function saveWhiteboardToGitHub() {
+        const dataURL = Whiteboard.getDataURL();
+        if (!dataURL) {
+            alert('Nothing to save');
+            return;
+        }
+
+        // Prompt for whiteboard name
+        const name = prompt('Enter a name for this whiteboard:', 'whiteboard-' + Date.now());
+        if (!name) return;
+
+        const id = name.toLowerCase()
+            .replace(/[^\w\s-]/g, '')
+            .replace(/\s+/g, '-')
+            .substring(0, 50) || 'whiteboard';
+
+        const saveBtn = document.getElementById('btn-save-whiteboard');
+        const originalText = saveBtn?.textContent;
+
+        try {
+            if (saveBtn) {
+                saveBtn.textContent = 'Saving...';
+                saveBtn.disabled = true;
+            }
+
+            // Extract base64 data (remove the data:image/png;base64, prefix)
+            const base64Data = dataURL.replace(/^data:image\/png;base64,/, '');
+
+            // Save the PNG file directly
+            await GitHub.saveFile(
+                `whiteboards/${id}.png`,
+                base64Data,
+                `Add whiteboard: ${name}`,
+                true // isBase64
+            );
+
+            if (saveBtn) {
+                saveBtn.textContent = 'Saved!';
+                setTimeout(() => {
+                    saveBtn.textContent = originalText;
+                    saveBtn.disabled = false;
+                }, 2000);
+            }
+
+            alert(`Whiteboard saved as whiteboards/${id}.png`);
+
+        } catch (err) {
+            console.error('Failed to save whiteboard:', err);
+            alert('Failed to save: ' + err.message);
+            if (saveBtn) {
+                saveBtn.textContent = originalText;
+                saveBtn.disabled = false;
+            }
+        }
+    }
+
     // Initialize when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -575,6 +739,7 @@ const App = (function() {
         loadNotebooks,
         toggleTheme,
         openSettings,
-        saveToGitHub
+        saveToGitHub,
+        saveWhiteboardToGitHub
     };
 })();

@@ -110,8 +110,12 @@ const GitHub = (function() {
 
     /**
      * Create or update file in repo
+     * @param {string} path - File path in repo
+     * @param {string} content - File content (text or base64 if isBase64=true)
+     * @param {string} message - Commit message
+     * @param {boolean} isBase64 - If true, content is already base64 encoded
      */
-    async function saveFile(path, content, message) {
+    async function saveFile(path, content, message, isBase64 = false) {
         const { owner, repo, branch } = getRepoConfig();
 
         // Get current file SHA if it exists (needed for updates)
@@ -127,7 +131,7 @@ const GitHub = (function() {
 
         const body = {
             message: message || `Update ${path}`,
-            content: btoa(unescape(encodeURIComponent(content))), // Handle unicode
+            content: isBase64 ? content : btoa(unescape(encodeURIComponent(content))), // Handle unicode for text
             branch: branch
         };
 
@@ -173,7 +177,7 @@ const GitHub = (function() {
     /**
      * Save a notebook (markdown file + update index)
      */
-    async function saveNotebook(id, content, title, tags = []) {
+    async function saveNotebook(id, content, title, tags = [], folder = null) {
         // Save the markdown file
         await saveFile(
             `notebooks/${id}.md`,
@@ -182,7 +186,7 @@ const GitHub = (function() {
         );
 
         // Update the index
-        await updateNotebookIndex(id, title, tags);
+        await updateNotebookIndex(id, title, tags, folder);
 
         return true;
     }
@@ -190,7 +194,7 @@ const GitHub = (function() {
     /**
      * Update the notebooks index
      */
-    async function updateNotebookIndex(id, title, tags = []) {
+    async function updateNotebookIndex(id, title, tags = [], folder = null) {
         const indexPath = 'notebooks/_index.json';
         let index = { notebooks: [], tags: [] };
 
@@ -211,14 +215,21 @@ const GitHub = (function() {
             notebook.title = title;
             notebook.tags = tags;
             notebook.updatedAt = now;
+            if (folder !== undefined) {
+                notebook.folder = folder;
+            }
         } else {
-            index.notebooks.push({
+            const newNotebook = {
                 id,
                 title,
                 tags,
                 createdAt: now,
                 updatedAt: now
-            });
+            };
+            if (folder) {
+                newNotebook.folder = folder;
+            }
+            index.notebooks.push(newNotebook);
         }
 
         // Update tags list
