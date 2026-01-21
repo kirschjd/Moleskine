@@ -12,6 +12,7 @@ const Whiteboard = (function() {
     let strokeWidth = 2;
     let startX = 0;
     let startY = 0;
+    let initialized = false;
 
     // Store drawing history for undo
     let history = [];
@@ -27,42 +28,56 @@ const Whiteboard = (function() {
 
         ctx = canvas.getContext('2d');
 
-        // Set canvas size
-        resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+        // Delay resize to ensure the view is visible
+        requestAnimationFrame(() => {
+            resizeCanvas();
 
-        // Set up event listeners
-        canvas.addEventListener('mousedown', handleMouseDown);
-        canvas.addEventListener('mousemove', handleMouseMove);
-        canvas.addEventListener('mouseup', handleMouseUp);
-        canvas.addEventListener('mouseleave', handleMouseUp);
+            // Only add event listeners once
+            if (!initialized) {
+                initialized = true;
 
-        // Touch support
-        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-        canvas.addEventListener('touchend', handleTouchEnd);
+                window.addEventListener('resize', resizeCanvas);
 
-        // Keyboard shortcuts
-        document.addEventListener('keydown', handleKeydown);
+                // Set up event listeners
+                canvas.addEventListener('mousedown', handleMouseDown);
+                canvas.addEventListener('mousemove', handleMouseMove);
+                canvas.addEventListener('mouseup', handleMouseUp);
+                canvas.addEventListener('mouseleave', handleMouseUp);
 
-        // Tool selection
-        initToolbar();
+                // Touch support
+                canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+                canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+                canvas.addEventListener('touchend', handleTouchEnd);
 
-        // Save initial state
-        saveState();
+                // Keyboard shortcuts
+                document.addEventListener('keydown', handleKeydown);
+
+                // Tool selection
+                initToolbar();
+
+                // Save initial state
+                saveState();
+            }
+        });
     }
 
     /**
      * Resize canvas to fit container
      */
     function resizeCanvas() {
-        if (!canvas) return;
+        if (!canvas || !ctx) return;
 
         const container = canvas.parentElement;
         const rect = container.getBoundingClientRect();
 
-        // Store current drawing
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // Don't resize if container isn't visible
+        if (rect.width === 0 || rect.height === 0) return;
+
+        // Store current drawing (only if canvas has content)
+        let imageData = null;
+        if (canvas.width > 0 && canvas.height > 0) {
+            imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        }
 
         canvas.width = rect.width;
         canvas.height = rect.height;
@@ -73,8 +88,10 @@ const Whiteboard = (function() {
         ctx.strokeStyle = currentColor;
         ctx.lineWidth = strokeWidth;
 
-        // Restore drawing
-        ctx.putImageData(imageData, 0, 0);
+        // Restore drawing if we had one
+        if (imageData) {
+            ctx.putImageData(imageData, 0, 0);
+        }
     }
 
     /**
