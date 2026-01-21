@@ -1,0 +1,23 @@
+{
+  "notebooks": [
+    {
+      "id": "welcome",
+      "title": "Welcome to Moleskine",
+      "tags": ["getting-started", "guide"],
+      "createdAt": "2026-01-21",
+      "updatedAt": "2026-01-21"
+    },
+    {
+      "id": "markdown-guide",
+      "title": "Markdown Guide",
+      "tags": ["guide", "reference"],
+      "createdAt": "2026-01-21",
+      "updatedAt": "2026-01-21"
+    }
+  ],
+  "tags": [
+    "getting-started",
+    "guide",
+    "reference"
+  ]
+}

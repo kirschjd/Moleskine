@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moleskine</title>
+    <link rel="stylesheet" href="css/main.css">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="8" y="4" width="32" height="40" rx="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <line x1="14" y1="4" x2="14" y2="44" stroke="currentColor" stroke-width="2"/>
+                    <line x1="20" y1="14" x2="34" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="20" y1="22" x2="34" y2="22" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <line x1="20" y1="30" x2="28" y2="30" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>
+            <h1>Moleskine</h1>
+            <p class="auth-subtitle">Personal Digital Notebook</p>
+
+            <form id="auth-form" class="auth-form">
+                <div class="form-group">
+                    <input
+                        type="password"
+                        id="password-input"
+                        placeholder="Enter password"
+                        autocomplete="current-password"
+                        required
+                    >
+                </div>
+                <button type="submit" class="auth-button">
+                    <span>Enter</span>
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M4 10h12m0 0l-4-4m4 4l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </form>
+
+            <p id="auth-error" class="auth-error"></p>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+</body>
+</html>

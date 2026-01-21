@@ -1,0 +1,166 @@
+/* ===================================
+   Editor-specific styles
+   =================================== */
+
+.editor-container {
+    display: flex;
+    height: calc(100vh - var(--header-height));
+    background: var(--color-surface);
+}
+
+.editor-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.editor-pane.source {
+    border-right: 1px solid var(--color-border);
+}
+
+.editor-toolbar {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    gap: var(--spacing-xs);
+    background: var(--color-bg-secondary);
+    flex-shrink: 0;
+}
+
+.editor-toolbar .btn-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.editor-toolbar .btn-icon:hover {
+    background: var(--color-surface);
+}
+
+.editor-textarea {
+    flex: 1;
+    padding: var(--spacing-lg);
+    border: none;
+    resize: none;
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    background: var(--color-surface);
+    color: var(--color-text);
+    tab-size: 4;
+}
+
+.editor-textarea:focus {
+    outline: none;
+}
+
+.editor-textarea::placeholder {
+    color: var(--color-text-muted);
+}
+
+.preview-pane {
+    flex: 1;
+    padding: var(--spacing-lg);
+    overflow-y: auto;
+    background: var(--color-surface);
+}
+
+/* Save notification animation */
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(10px); }
+    15% { opacity: 1; transform: translateY(0); }
+    85% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-10px); }
+}
+
+.save-notification {
+    animation: fadeInOut 2s ease forwards;
+}
+
+/* Responsive: Stack editor/preview on small screens */
+@media (max-width: 900px) {
+    .editor-container {
+        flex-direction: column;
+    }
+
+    .editor-pane {
+        height: 50%;
+    }
+
+    .editor-pane.source {
+        border-right: none;
+        border-bottom: 1px solid var(--color-border);
+    }
+}
+
+/* Editor mode toggle (for future full-screen modes) */
+.editor-container.source-only .editor-pane.preview {
+    display: none;
+}
+
+.editor-container.preview-only .editor-pane.source {
+    display: none;
+}
+
+/* Line numbers (optional enhancement) */
+.editor-with-line-numbers {
+    display: flex;
+}
+
+.line-numbers {
+    padding: var(--spacing-lg) var(--spacing-sm);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    line-height: 1.7;
+    text-align: right;
+    user-select: none;
+    border-right: 1px solid var(--color-border);
+}
+
+/* Drafts list */
+.drafts-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.draft-item {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+}
+
+.draft-item:hover {
+    background: var(--color-bg-secondary);
+}
+
+.draft-item-title {
+    font-weight: 500;
+    margin-bottom: 2px;
+}
+
+.draft-item-date {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.draft-item-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.draft-item:hover .draft-item-actions {
+    opacity: 1;
+}
