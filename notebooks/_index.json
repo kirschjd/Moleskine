@@ -22,10 +22,11 @@
     },
     {
       "id": "asdf--list-item--list-item",
-      "title": "asdf- list item- list item",
+      "title": "Test",
       "tags": [],
       "createdAt": "2026-01-21",
-      "updatedAt": "2026-01-21"
+      "updatedAt": "2026-01-21",
+      "folder": null
     }
   ],
   "tags": [
