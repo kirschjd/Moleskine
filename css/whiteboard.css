@@ -24,15 +24,16 @@
     background-size: 20px 20px;
     opacity: 0.3;
     pointer-events: none;
+    z-index: 0;
 }
 
 .whiteboard-canvas {
     position: absolute;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    z-index: 1;
     cursor: crosshair;
+    /* Note: width/height set by JavaScript, not CSS */
 }
 
 /* Toolbar */
